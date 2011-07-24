@@ -56,33 +56,7 @@ module Freenect
       @ctx
     end
 
-    def get_tilt_state
-      unless (p=::FFI::Freenect.freenect_get_tilt_state(self.device)).null?
-        return RawTiltState.new(p)
-      else
-        raise DeviceError, "freenect_get_tilt_state() returned a NULL tilt_state"
-      end
-    end
-
-    alias tilt_state get_tilt_state
-
-    # Returns the current tilt angle
-    def get_tilt_degrees
-      ::FFI::Freenect.freenect_get_tilt_degs(self.device)
-    end
-
-    alias tilt get_tilt_degrees
-
-    # Sets the tilt angle.
-    # Maximum tilt angle range is between +30 and -30
-    def set_tilt_degrees(angle)
-      ::FFI::Freenect.freenect_set_tilt_degs(self.device, angle)
-      return(update_tilt_state() < 0) # based on libfreenect error cond. as of 12-21-10
-    end
-
-    alias tilt= set_tilt_degrees
-
-    # Defines a handler for depth events.
+		# Defines a handler for depth events.
     #
     # @yield [device, depth_buf, timestamp]
     # @yieldparam device     A pointer to the device that generated the event.
@@ -114,15 +88,15 @@ module Freenect
       end
     end
 
-    def stop_depth
-      unless(::FFI::Freenect.freenect_stop_depth(self.device) == 0)
-        raise DeviceError, "Error in freenect_stop_depth()"
-      end
-    end
-
     def start_video
       unless(::FFI::Freenect.freenect_start_video(self.device) == 0)
         raise DeviceError, "Error in freenect_start_video()"
+      end
+    end
+
+		def stop_depth
+      unless(::FFI::Freenect.freenect_stop_depth(self.device) == 0)
+        raise DeviceError, "Error in freenect_stop_depth()"
       end
     end
 
@@ -132,47 +106,52 @@ module Freenect
       end
     end
 
-    def set_depth_format(fmt)
-      l_fmt = fmt.is_a?(Numeric)? fmt : Freenect::DEPTH_FORMATS[fmt]
-      ret = ::FFI::Freenect.freenect_set_depth_format(self.device, l_fmt)
-      if (ret== 0)
-        @depth_format = fmt
+		def update_tilt_state
+			ret = ::FFI::Freenect.freenect_update_tilt_state(self.device)
+			if ret == 0
+				return true
+			else
+				raise DeviceError, "freenect_update_tilt_state returned error."
+			end
+		end
+
+    def get_tilt_state
+      unless (p=::FFI::Freenect.freenect_get_tilt_state(self.device)).null?
+        return RawTiltState.new(p)
       else
-        raise DeviceError, "Error calling freenect_set_depth_format(self, #{fmt})"
+        raise DeviceError, "freenect_get_tilt_state() returned a NULL tilt_state"
       end
     end
 
-    alias depth_format= set_depth_format
+    alias tilt_state get_tilt_state
 
-    # returns the symbolic constant for the current depth format
-    def depth_format
-      (@depth_format.is_a?(Numeric))? Freenect::DEPTH_FORMATS[@depth_format] : @depth_format
+    # Returns the current tilt angle
+    def get_tilt_degrees
+      ::FFI::Freenect.freenect_get_tilt_degs(self.device)
     end
 
-    # Sets the video format to one of the following accepted values:
-    #
-    def set_video_format(fmt)
-      l_fmt = fmt.is_a?(Numeric)? fmt : Freenect::VIDEO_FORMATS[fmt]
-      ret = ::FFI::Freenect.freenect_set_video_format(self.device, l_fmt)
-      if (ret== 0)
-        @video_format = fmt
-      else
-        raise DeviceError, "Error calling freenect_set_video_format(self, #{fmt})"
-      end
+    alias tilt get_tilt_degrees
+
+    # Sets the tilt angle.
+    # Maximum tilt angle range is between +30 and -30
+    def set_tilt_degrees(angle)
+      ::FFI::Freenect.freenect_set_tilt_degs(self.device, angle)
     end
 
-    alias video_format= set_video_format
+    alias tilt= set_tilt_degrees
 
-    def video_format
-      (@video_format.is_a?(Numeric))? ::Freenect::VIDEO_FORMATS[@video_format] : @video_format
-    end
+		def get_tilt_status(rts)
+			unless rts.is_a?(Freenect::RawTiltState)
+				raise ArgumentError, 'Argument is no RawTiltState'
+			end
+			return ::FFI::Freenect.freenect_get_tilt_status(rts)
+		end
 
     # Sets the led to one of the following accepted values:
     #   :off,               Freenect::LED_OFF
     #   :green,             Freenect::LED_GREEN
     #   :red,               Freenect::LED_RED
     #   :yellow,            Freenect::LED_YELLOW
-    #   :blink_yellow,      Freenect::LED_BLINK_YELLOW
     #   :blink_green,       Freenect::LED_BLINK_GREEN
     #   :blink_red_yellow,  Freenect::LED_BLINK_RED_YELLOW
     #
@@ -183,7 +162,82 @@ module Freenect
 
     alias led= set_led
 
-    def reference_id
+		# Returns an array with dx, dy and dz
+		def get_mks_accel(rts)
+			unless rts.is_a?(Freenect::RawTiltState)
+				raise ArgumentError, 'Argument is no RawTiltState'
+			end
+			dx_x = FFI::MemoryPointer.new(:double)
+			dy_y = FFI::MemoryPointer.new(:double)
+			dz_p = FFI::MemoryPointer.new(:double)
+			::FFI::Freenect.freenect_get_mks_accel(rts, dx_p, dy_p, dz_p)
+			return [dx.read_double, dy.read_double, dz.read_double]
+		end
+
+		def get_video_mode_count
+			return ::FFI::Freenect.freenect_get_video_mode_count()
+		end
+
+		def get_video_mode(mode_num)
+			unless (p=::FFI::Freenect.freenect_get_video_mode(mode_num)).null?
+				return FrameMode.new(p)
+			else
+				raise DeviceError, "freenect_get_video_mode(mode_num) returned a NULL frame mode"
+			end
+		end
+
+		def get_current_video_mode
+			unless (p=::FFI::Freenect.freenect_get_current_video_mode(self.device)).null?
+				return FrameMode.new(p)
+			else
+				raise DeviceError, "freenect_get_current_video_mode(dev) returned a NULL frame mode"
+			end
+		end
+
+    def set_video_mode(res, mode)
+			fm = nil
+			puts "R: " + res.to_s + " " + mode.to_s
+			unless (p=::FFI::Freenect.freenect_find_video_mode(res, mode)).null?
+				fm = FrameMode.new(p)
+			else
+				raise DeviceError, "set_video_mode failed to find the video_mode"
+			end
+      ret = ::FFI::Freenect.freenect_set_video_format(
+								self.device,
+								fm)
+      if (ret== 0)
+        return true
+      else
+        raise DeviceError, "Error calling freenect_set_video_format"
+      end
+    end
+
+		def get_depth_mode_count
+			return ::FFI::Freenect.freenect_get_depth_mode_count()
+		end
+
+		def get_depth_mode(mode_num)
+			return ::FFI::Freenect.freenect_get_depth_mode(mode_num)
+		end
+
+		def get_current_depth_mode
+			return ::FFI::Freenect.freenect_get_current_depth_mode(self.device)
+		end
+
+    def set_depth_mode(res, mode)
+      ret = ::FFI::Freenect.freenect_set_depth_format(
+								self.device,
+								::FFI::Freenect.freenect_find_depth_mode(res, mode))
+      if (ret== 0)
+        return true
+      else
+        raise DeviceError, "Error calling freenect_set_depth_format"
+      end
+    end
+
+    alias depth_mode= set_depth_mode
+
+ 		def reference_id
       unless (p=::FFI::Freenect.freenect_get_user(device)).null?
         p.read_long_long
       end
