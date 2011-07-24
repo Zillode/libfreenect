@@ -63,26 +63,33 @@ describe Freenect::Device do
     (@dev.led = Freenect::LED_GREEN).should be_true
     (@dev.led = Freenect::LED_RED).should be_true
     (@dev.led = Freenect::LED_YELLOW).should be_true
-    (@dev.led = Freenect::LED_BLINK_YELLOW).should be_true
     (@dev.led = Freenect::LED_BLINK_GREEN).should be_true
     (@dev.led = Freenect::LED_BLINK_RED_YELLOW).should be_true
   end
 
-  it "should allow the video_format to be set and retrieved" do
-    @dev.video_format.should be_nil # at first
-    @dev.video_format = :bayer
-    @dev.video_format.should == :bayer
-    @dev.video_format = Freenect::VIDEO_RGB
-    @dev.video_format.should == :rgb
+  it "should allow the video_mode to be set and retrieved" do
+    #@dev.get_current_video_mode.should be_nil # at first
+    #@dev.set_video_mode(:resolution_medium, :bayer)
+    @dev.set_video_mode(Freenect::RESOLUTION_MEDIUM, Freenect::VIDEO_BAYER)
+    fm = @dev.get_current_video_mode
+		fm.resolution.should == :resolution_medium
+		fm.video_or_depth_format.should == :bayer
+    @dev.set_video_mode(:resolution_low, :rgb)
+    fm = @dev.get_current_video_mode
+		fm.resolution.should == :resolution_low
+		fm.video_or_depth_format.should == :rgb
   end
 
-
-  it "should allow the depth_format to be set and retrieved" do
+  it "should allow the depth_mode to be set and retrieved" do
     @dev.depth_format.should be_nil # at first
-    @dev.depth_format = :depth_10bit
-    @dev.depth_format.should == :depth_10bit
-    @dev.depth_format = Freenect::DEPTH_11BIT
-    @dev.depth_format = :depth_11bit
+    @dev.set_depth_mode(:resolution_medium, :depth_10bit)
+    fm = @dev.get_current_video_mode
+		fm.resolution.should == :resolution_medium
+		fm.video_or_depth_format.should == :depth_10bit
+    @dev.set_depth_mode(:resolution_high, :depth_11bit)
+    fm = @dev.get_current_video_mode
+		fm.resolution.should == :resolution_high
+		fm.video_or_depth_format.should == :depth_11bit
   end
 
   it "should allow itself to be looked up by it's object reference ID" do
